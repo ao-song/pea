@@ -13,7 +13,7 @@
          terminate/2,
          code_change/3]).
 
--record(state, {node, configs}).
+-record(state, {node, nodes, configs}).
 
 -record(kv, {key, value}).
 
@@ -34,8 +34,10 @@ start_link(_Args) ->
 init([]) ->
     Configs = get_configs(),
     {ok, Node} = init_node(Configs),
+    {ok, Nodes} = init_nodes(Configs),
 
     {ok, #state{node = Node,
+                nodes = Nodes,
                 configs = Configs}}.
 
 -spec handle_call(term(), term(), #state{}) -> {reply, term(), #state{}}.
@@ -97,3 +99,12 @@ get_first_local_ip_v4() ->
     	        not lists:member(loopback, Flags),
     	        size(Addr) == 4,
     	        Addr =/= {127, 0, 0, 1}]).
+
+init_nodes(Configs) ->
+    case lists:keyfind(nodes, 1, Configs) of
+        {nodes, Nodes} ->
+            [net_kernel:connect_node(Node) || Node <- Nodes],
+            {ok, Nodes};
+        false ->
+            {ok, []}
+    end,
