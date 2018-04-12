@@ -3,7 +3,13 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1]).
+-export([start_link/1,
+         add_node/0,
+         remove_node/0,
+         insert/2,
+         search/1,
+         update/2,
+         delete/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -19,6 +25,8 @@
 
 -define(CONFIG_FILE, "config").
 -define(NODE_NAME, "kv").
+-define(TABLE_INIT_TIMEOUT, 5000).
+-define(DB_RETRY, 3).
 
 %%====================================================================
 %% API functions
@@ -26,6 +34,21 @@
 -spec start_link(term()) -> {ok, pid()}.
 start_link(_Args) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+add_node() -> ok.
+remove_node() -> ok.
+
+insert(Key, Value) ->
+    gen_server:call(?MODULE, {insert, Key, Value}).
+
+search(Key) ->
+    gen_server:call(?MODULE, {search, Key}).
+
+update(Key, Value) ->
+    insert(Key, Value).
+
+delete(Key) ->
+    gen_server:call(?MODULE, {delete, Key}).
 
 %%====================================================================
 %% gen_server callbacks
@@ -36,14 +59,41 @@ init([]) ->
     {ok, Node} = init_node(Configs),
     {ok, Nodes} = init_nodes(Configs),
 
+    ok = mnesia:create_schema(Nodes),
+    rpc:multicall(Nodes, application, start, [mnesia]),
+
+    mnesia:create_table(kv,
+                        [{attributes, record_info(fields, kv)},
+                         {disc_copies, Nodes},
+                         {type, set}]),
+    mnesia:wait_for_tables([kv], ?TABLE_INIT_TIMEOUT),
+
     {ok, #state{node = Node,
                 nodes = Nodes,
                 configs = Configs}}.
 
 -spec handle_call(term(), term(), #state{}) -> {reply, term(), #state{}}.
-handle_call(_Message, _From, State) ->
-    Response = ok,
-    {reply, Response, State}.
+handle_call({insert, Key, Value}, _From, State) ->
+    F = fun() ->
+        mnesia:write(#kv{key=Key, value=Value})
+    end,
+    mnesia:activity({sync_transaction, ?DB_RETRY}, F),
+
+    {reply, ok, State};
+handle_call({search, Key}, _From, State) ->
+    F = fun() ->
+        ets:lookup(kv, Key)
+    end,
+    Res = mnesia:activity(ets, F),
+
+    {reply, Res, State};
+handle_call({delete, Key}, _From, State) ->
+    F = fun() ->
+        mnesia:delete({kv, Key})
+    end,
+    mnesia:activity({sync_transaction, ?DB_RETRY}, F),
+
+    {reply, ok, State}.
 
 -spec handle_cast(term(), #state{}) -> {noreply, #state{}}.
 handle_cast(_Message, State) ->
@@ -54,7 +104,8 @@ handle_info(_Message, State) ->
     {noreply, State}.
 
 -spec terminate(term(), #state{}) -> ok.
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{nodes = Nodes}) ->
+    rpc:multicall(Nodes, application, stop, [mnesia]),
     ok.
 
 -spec code_change(term(), #state{}, term()) -> {ok, #state{}}.
@@ -82,7 +133,7 @@ init_node({node, Node}) ->
             {error, Reason}
     end;
 init_node(Configs) ->
-    case [N | {node, N} <- Configs] of
+    case [N || {node, N} <- Configs] of
         [] ->
             Node = ?NODE_NAME ++ "@" ++ inet:ntoa(get_first_local_ip_v4()),
             init_node({node, erlang:list_to_atom(Node)});
@@ -107,4 +158,4 @@ init_nodes(Configs) ->
             {ok, Nodes};
         false ->
             {ok, []}
-    end,
+    end.
