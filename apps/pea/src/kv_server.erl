@@ -105,7 +105,9 @@ handle_info(_Message, State) ->
 
 -spec terminate(term(), #state{}) -> ok.
 terminate(_Reason, #state{nodes = Nodes}) ->
+    net_kernel:stop(),    
     rpc:multicall(Nodes, application, stop, [mnesia]),
+    mnesia:delete_schema(Nodes),
     ok.
 
 -spec code_change(term(), #state{}, term()) -> {ok, #state{}}.
@@ -128,6 +130,8 @@ init_node({node, Node}) ->
         {ok, _Pid} ->
             {ok, Node};
         {error, {already_started, _Pid}} ->
+            {ok, node()};
+        {error, {already_exists, _Pid}} ->
             {ok, node()};
         {error, Reason} ->
             {error, Reason}

@@ -47,20 +47,20 @@ init([]) ->
 %% http://localhost:8080/rest_server:FUN?key=value
 add(SessionID, _Env, Input) ->
     [Key, Value] = string:tokens(Input, "="),
-    mod_esi:deliver(SessionID, "ok"),
+    response_ok(SessionID),
     gen_server:call(?MODULE, {add, Key, Value}).
 
 search(SessionID, _Env, Input) -> 
-    mod_esi:deliver(SessionID, "ok"),   
+    response_ok(SessionID),   
     gen_server:call(?MODULE, {search, Input}).
 
 update(SessionID, _Env, Input) ->
     [Key, Value] = string:tokens(Input, "="),
-    mod_esi:deliver(SessionID, "ok"),
+    response_ok(SessionID),
     gen_server:call(?MODULE, {add, Key, Value}).
 
 delete(SessionID, _Env, Input) ->
-    mod_esi:deliver(SessionID, "ok"),
+    response_ok(SessionID),
     gen_server:call(?MODULE, {delete, Input}).
 
 
@@ -98,3 +98,7 @@ code_change(_OldVersion, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+response_ok(SessionID) ->
+    Header = "Content-Type: text/plain\r\n\r\n",
+    Content = "ok",
+    mod_esi:deliver(SessionID, Header ++ Content).
