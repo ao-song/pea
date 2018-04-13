@@ -6,7 +6,7 @@
 -export([start_link/1,
          add_node/0,
          remove_node/0,
-         insert/2,
+         add/2,
          search/1,
          update/2,
          delete/1]).
@@ -38,14 +38,14 @@ start_link(_Args) ->
 add_node() -> ok.
 remove_node() -> ok.
 
-insert(Key, Value) ->
-    gen_server:call(?MODULE, {insert, Key, Value}).
+add(Key, Value) ->
+    gen_server:call(?MODULE, {add, Key, Value}).
 
 search(Key) ->
     gen_server:call(?MODULE, {search, Key}).
 
 update(Key, Value) ->
-    insert(Key, Value).
+    add(Key, Value).
 
 delete(Key) ->
     gen_server:call(?MODULE, {delete, Key}).
@@ -73,7 +73,7 @@ init([]) ->
                 configs = Configs}}.
 
 -spec handle_call(term(), term(), #state{}) -> {reply, term(), #state{}}.
-handle_call({insert, Key, Value}, _From, State) ->
+handle_call({add, Key, Value}, _From, State) ->
     F = fun() ->
         mnesia:write(#kv{key=Key, value=Value})
     end,

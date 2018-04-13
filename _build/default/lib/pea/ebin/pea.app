@@ -1,0 +1,11 @@
+{application,pea,
+             [{description,"An OTP application"},
+              {vsn,"0.1.0"},
+              {registered,[]},
+              {mod,{pea_app,[]}},
+              {applications,[kernel,stdlib]},
+              {env,[]},
+              {modules,[kv_server,pea_app,pea_sup,rest_server]},
+              {maintainers,[]},
+              {licenses,["Apache 2.0"]},
+              {links,[]}]}.
