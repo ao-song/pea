@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1,
+-export([start_link/0,
          add_node/0,
          remove_node/0,
          add/2,
@@ -31,8 +31,8 @@
 %%====================================================================
 %% API functions
 %%====================================================================
--spec start_link(term()) -> {ok, pid()}.
-start_link(_Args) ->
+-spec start_link() -> {ok, pid()}.
+start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 add_node() -> ok.

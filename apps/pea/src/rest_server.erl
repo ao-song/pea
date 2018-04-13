@@ -5,7 +5,7 @@
 -include_lib("inets/include/httpd.hrl").
 
 %% API
--export([start_link/1,
+-export([start_link/0,
          add/3,
          search/3,
          update/3,
@@ -24,8 +24,8 @@
 %%====================================================================
 %% API functions
 %%====================================================================
--spec start_link(term()) -> {ok, pid()}.
-start_link(_Args) ->
+-spec start_link() -> {ok, pid()}.
+start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%====================================================================
